@@ -1,0 +1,52 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Игнорировать системные папки и файлы
+AppData/
+Application Data/
+Local Settings/
+node_modules/
+.DS_Store
+*.log
+*.lnk
+desktop.ini
+NTUSER*
+ntuser*
+
+# Игнорировать личные файлы и папки
+.bash_history
+.gitconfig
+.swt/
+3D Objects/
+Contacts/
+Cookies/
+Documents/
+Downloads/
+Favorites/
+Links/
+Music/
+Pictures/
+Recent/
+Saved Games/
+Searches/
+SendTo/
+Videos/
+*.jpg
+*.png
+*.webp
+*.docxnode_modules/
+.DS_Store
+*.log
+.vscode/
+.idea/
+*.swp

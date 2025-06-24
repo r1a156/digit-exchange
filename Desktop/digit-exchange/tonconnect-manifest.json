@@ -1,0 +1,7 @@
+{
+  "url": "http://localhost:8000",
+  "name": "Цифра Биржа",
+  "iconUrl": "http://localhost:8000/icon.png",
+  "termsOfUseUrl": "http://localhost:8000/terms",
+  "privacyPolicyUrl": "http://localhost:8000/privacy"
+}
