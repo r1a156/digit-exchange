@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -121,22 +82,54 @@
 </head>
 <body class="bg-gray-900 gradient-bg">
   <div id="root">Загрузка...</div>
+  <!-- Обработка XLSX файлов -->
+  <script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+          var firstSheetName = workbook.SheetNames[0];
+          var worksheet = workbook.Sheets[firstSheetName];
+          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+          var filteredData = jsonData.filter(row => row.some(filledCell));
+          var headerRowIndex = filteredData.findIndex((row, index) =>
+            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+          );
+          if (headerRowIndex === -1 || headerRowIndex > 25) {
+            headerRowIndex = 0;
+          }
+          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+          return csv;
+        } catch (e) {
+          console.error('XLSX Processing Error:', e);
+          return "";
+        }
+      }
+      return gk_fileData[filename] || "";
+    }
+  </script>
+  <!-- Глобальный обработчик ошибок -->
   <script>
-    // Global error handler
     window.onerror = (msg, url, line, col, error) => {
-      console.error(`Error: ${msg}\nURL: ${url}\nLine: ${line}\nCol: ${col}\nDetails:`, error);
+      console.error(`Global Error: ${msg}\nURL: ${url}\nLine: ${line}\nCol: ${col}\nDetails:`, error);
       document.getElementById('root').innerHTML = `
         <div class="error-boundary">
-          <h2 className="text-2xl text-red-600">Критическая ошибка</h2>
-          <p className="text-gray-300">${msg}</p>
+          <h2 class="text-2xl text-red-600">Критическая ошибка</h2>
+          <p class="text-gray-300">${msg}</p>
           <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">
             Перезагрузить
           </button>
         </div>
       `;
     };
-
-    // File handling
+    // Повторная обработка XLSX
     let g_isXlsx = false;
     let g_fileData = {};
     function filledCell(cell) {
@@ -167,13 +160,16 @@
       return "";
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha256-1bK0vUsf2Bma1aH3x/9WheOhlKSL1a1q0vUr85G3iNk=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha256-4j1p3W3A0Xz0X6m2b8V7i1X3n0f3X4v5P6Q7R8=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js" integrity="sha256-4j1p3W3A0Xz0X6m2b8V7i1X3n0f3X4v5P6Q7R8=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha256-4j1p3W3A0Xz0X6m2b8V7i1X3n0f3X4v5P6Q7R8=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tonweb@2.0.0/dist/tonweb.js" integrity="sha256-4j1p3W3A0Xz0X6m2b8V7i1X3n0f3X4v5P6Q7R8=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tonconnect/sdk@3.0.3/dist/tonconnect-sdk.min.js" integrity="sha256-4j1p3W3A0Xz0X6m2b8V7i1X3n0f3X4v5P6Q7R8=" crossorigin="anonymous"></script>
+  <!-- Зависимости через CDN -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/tonweb@2.0.0/dist/tonweb.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js" crossorigin="anonymous"></script>
+  <!-- React-приложение -->
   <script type="text/babel">
+    console.log('Starting React app...');
     const { useState, useEffect, useCallback, Component } = React;
     const { createRoot } = ReactDOM;
 
@@ -181,6 +177,7 @@
     class ErrorBoundary extends Component {
       state = { hasError: false, error: null };
       static getDerivedStateFromError(error) {
+        console.error('ErrorBoundary caught:', error);
         return { hasError: true, error };
       }
       render() {
@@ -238,6 +235,7 @@
     };
 
     const DigitExchange = () => {
+      console.log('Rendering DigitExchange component...');
       // Constants
       const projectWallet = "UQCJFymQcEZYOp8UbITHMaHo8HH8FPVzTWTrqxN6tB0O3_Kn";
       const network = 'testnet';
@@ -302,6 +300,7 @@
         }
         try {
           const balance = await ton.getBalance(address);
+          console.log(`Balance for ${address}: ${balance / 1e9} TON`);
           return balance / 1e9 >= required;
         } catch (e) {
           setError(`Ошибка проверки баланса: ${e.message}`);
@@ -561,13 +560,17 @@
         reader.readAsDataURL(file);
       };
 
-      // Load dependencies
+      // Load dependencies (Chart.js and QRCode disabled for debugging)
       useEffect(() => {
+        console.log('Loading dependencies...');
+        setDependenciesLoaded(true); // Временно обходим загрузку Chart.js и QRCode
+        /*
         Promise.all([
-          import('https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js').catch(() => null),
-          import('https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js').catch(() => null),
-          import('https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js').catch(() => null)
+          import('https://unpkg.com/chart.js@4.4.4/dist/chart.min.js').catch(() => null),
+          import('https://unpkg.com/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js').catch(() => null),
+          import('https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js').catch(() => null)
         ]).then(([chartModule, zoomModule, qrcodeModule]) => {
+          console.log('Dependencies loaded:', chartModule, zoomModule, qrcodeModule);
           window.Chart = chartModule?.default || null;
           window['chartjs-plugin-zoom'] = zoomModule?.default || null;
           window.QRCode = qrcodeModule || null;
@@ -606,13 +609,16 @@
           }
           setDependenciesLoaded(true);
         }).catch(err => {
+          console.error('Error loading dependencies:', err);
           setError('Ошибка загрузки библиотек');
           setDependenciesLoaded(true);
         });
+        */
       }, []);
 
       // Fetch data
       useEffect(() => {
+        console.log('Fetching initial data...');
         if (ton) fetchBalances();
         fetchHistory();
         const interval = setInterval(() => {
@@ -664,10 +670,29 @@
         </div>
       );
 
+      // Timeout для отображения ошибки
+      useEffect(() => {
+        const timeout = setTimeout(() => {
+          if (!dependenciesLoaded) {
+            document.getElementById('root').innerHTML = `
+              <div className="error-boundary">
+                <h2 className="text-2xl text-red-600">Ошибка загрузки</h2>
+                <p className="text-gray-300">Не удалось загрузить зависимости. Проверьте соединение.</p>
+                <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">
+                  Перезагрузить
+                </button>
+              </div>
+            `;
+          }
+        }, 10000);
+        return () => clearTimeout(timeout);
+      }, [dependenciesLoaded]);
+
       if (!dependenciesLoaded) {
         return <div className="text-center text-gray-400 p-4">Загрузка...</div>;
       }
 
+      console.log('Rendering UI...');
       return (
         <ErrorBoundary>
           <div className="min-h-screen flex flex-col items-center p-4">
@@ -761,14 +786,9 @@
                 </div>
               </div>
 
-              <div className="bg-gray-700 p-4 rounded-lg mb-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-white mb-2">График цен</h3>
-                <canvas id="priceChart"></canvas>
-              </div>
-
               {history.length > 0 && (
                 <div className="bg-gray-700 p-4 rounded-lg mb-6 shadow-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">История сделок</h3>
+                  <h3 className="text-lg font-semibold text-white mb-2">История транзакций</h3>
                   <button
                     className="w-full px-4 py-2 mb-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-600"
                     onClick={exportToXLSX}
@@ -821,14 +841,15 @@
               )}
             </main>
 
-            <footer className="w-full max-w-6xl mt-6 text-center text-gray-400">
-              <p>© 2025 Цифра Биржа. Все права защищены.</p>
+            <footer className="w-full max-w-6xl mt-6 text-center">
+              <p className="text-gray-400">© {new Date().getFullYear()} Цифра Биржа. Все права защищены.</p>
             </footer>
           </div>
         </ErrorBoundary>
       );
     };
 
+    console.log('Initializing React root...');
     const root = createRoot(document.getElementById('root'));
     root.render(<DigitExchange />);
   </script>
