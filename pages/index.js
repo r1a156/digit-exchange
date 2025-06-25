@@ -41,7 +41,7 @@ export default function Home() {
           const data = await response.json();
           setWalletBalance(data.result.balance / 1e9);
         } catch (error) {
-          console.error('Error fetching balance:', error);
+          console.error('Ошибка получения баланса:', error);
         }
       }
       fetchBalance();
@@ -52,9 +52,9 @@ export default function Home() {
   const handleSetSeller = async () => {
     if (isClient && tonConnectUI?.connected) {
       setSellerAddress(tonConnectUI.account.address);
-      alert('Seller wallet set!');
+      alert('Кошелек продавца установлен!');
     } else {
-      alert('Please connect a wallet to set as seller.');
+      alert('Пожалуйста, подключите кошелек, чтобы установить его как продавца.');
     }
   };
 
@@ -66,17 +66,17 @@ export default function Home() {
     const requiredAmount = deal.P + 0.05;
 
     if (!tonConnectUI?.connected) {
-      alert('Please connect your wallet first.');
+      alert('Пожалуйста, сначала подключите кошелек.');
       return;
     }
 
     if (walletBalance < requiredAmount) {
-      alert(`Insufficient balance. Required: ${requiredAmount.toFixed(2)} TON`);
+      alert(`Недостаточно средств. Требуется: ${requiredAmount.toFixed(2)} TON`);
       return;
     }
 
     if (currentDeal !== 1 && !sellerAddress) {
-      alert('Seller wallet not set.');
+      alert('Кошелек продавца не установлен.');
       return;
     }
 
@@ -103,16 +103,16 @@ export default function Home() {
       await tonConnectUI.sendTransaction(transaction);
 
       setDealHistory([
-        { ...deal, buyer: tonConnectUI.account.address, seller: sellerAddress || 'N/A' },
+        { ...deal, buyer: tonConnectUI.account.address, seller: sellerAddress || 'Н/Д' },
         ...dealHistory,
       ]);
       setCurrentDeal(currentDeal + 1);
       setSellerAddress(tonConnectUI.account.address);
 
-      alert(`Deal ${currentDeal} completed successfully!`);
+      alert(`Сделка ${currentDeal} успешно завершена!`);
     } catch (error) {
-      console.error('Transaction failed:', error);
-      alert('Transaction failed. Please try again.');
+      console.error('Ошибка транзакции:', error);
+      alert('Транзакция не удалась. Попробуйте снова.');
     }
   };
 
@@ -134,18 +134,18 @@ export default function Home() {
         .then((result) => {
           if (result.success) {
             setDealHistory([
-              { ...deal, buyer: 'Project Wallet', seller: sellerAddress },
+              { ...deal, buyer: 'Кошелек проекта', seller: sellerAddress },
               ...dealHistory,
             ]);
             setCurrentDeal(10);
-            alert('Deal 9 auto-bought by project wallet!');
+            alert('Сделка 9 автоматически выкуплена кошельком проекта!');
           } else {
-            alert('Auto-buy failed.');
+            alert('Автовыкуп не удался.');
           }
         })
         .catch((error) => {
-          console.error('Auto-buy failed:', error);
-          alert('Auto-buy failed. Please try again.');
+          console.error('Ошибка автовыкупа:', error);
+          alert('Автовыкуп не удался. Попробуйте снова.');
         });
     }
   }, [isClient, currentDeal, sellerAddress]);
@@ -153,70 +153,70 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <Head>
-        <title>Digit Exchange</title>
-        <meta name="description" content="TON-based marketplace" />
+        <title>Цифровой Обмен</title>
+        <meta name="description" content="Маркетплейс на базе TON" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/icon.svg" />
       </Head>
 
       <main className={styles.main}>
-        <img src="/icon.svg" alt="Digit Exchange Logo" className={styles.logo} />
-        <h1 className={styles.title}>Digit Exchange</h1>
+        <img src="/icon.svg" alt="Логотип Цифровой Обмен" className={styles.logo} />
+        <h1 className={styles.title}>Цифровой Обмен</h1>
 
         <section className={styles.section}>
           {isClient && <TonConnectButton />}
           {isClient && tonConnectUI?.connected && (
             <div className={styles.walletInfo}>
               <p>
-                <strong>Wallet:</strong>{' '}
+                <strong>Кошелек:</strong>{' '}
                 {tonConnectUI.account.address.slice(0, 6)}...{tonConnectUI.account.address.slice(-4)}
               </p>
               <p>
-                <strong>Balance:</strong>{' '}
-                {walletBalance ? walletBalance.toFixed(2) : 'Loading...'} TON
+                <strong>Баланс:</strong>{' '}
+                {walletBalance ? walletBalance.toFixed(2) : 'Загрузка...'} TON
               </p>
               <button className={styles.button} onClick={handleSetSeller}>
-                Set as Seller
+                Установить как продавца
               </button>
             </div>
           )}
         </section>
 
         <section className={styles.section}>
-          <h2>Current Deal #{currentDeal}</h2>
+          <h2>Текущая сделка #{currentDeal}</h2>
           {currentDeal <= 8 && (
             <div className={styles.dealInfo}>
               <p>
-                <strong>Price:</strong> {deals[currentDeal - 1].P.toFixed(2)} TON
+                <strong>Цена:</strong> {deals[currentDeal - 1].P.toFixed(2)} TON
               </p>
               <p>
-                <strong>Seller Payout:</strong> {deals[currentDeal - 1].S.toFixed(2)} TON
+                <strong>Выплата продавцу:</strong> {deals[currentDeal - 1].S.toFixed(2)} TON
               </p>
               <button
                 className={styles.button}
                 disabled={!isClient || !tonConnectUI?.connected || (currentDeal !== 1 && !sellerAddress)}
                 onClick={handleDeal}
               >
-                Buy Now
+                Купить сейчас
               </button>
             </div>
           )}
           {currentDeal === 9 && (
-            <p className={styles.info}>Deal 9 will be auto-bought by the project.</p>
+            <p className={styles.info}>Сделка 9 будет автоматически выкуплена проектом.</p>
           )}
-          {currentDeal > 9 && <p className={styles.info}>No more deals available.</p>}
+          {currentDeal > 9 && <p className={styles.info}>Больше сделок нет.</p>}
         </section>
 
         <section className={styles.section}>
-          <h2>Deal History</h2>
+          <h2>История сделок</h2>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Deal</th>
-                <th>Price (P_i, TON)</th>
-                <th>Seller Payout (S_i, TON)</th>
-                <th>Buyer</th>
-                <th>Seller</th>
+                <th>Сделка</th>
+                <th>Цена (P_i, TON)</th>
+                <th>Выплата продавцу (S_i, TON)</th>
+                <th>Покупатель</th>
+                <th>Продавец</th>
               </tr>
             </thead>
             <tbody>
@@ -226,13 +226,13 @@ export default function Home() {
                   <td>{deal.P.toFixed(2)}</td>
                   <td>{deal.S.toFixed(2)}</td>
                   <td>
-                    {deal.buyer === 'Project Wallet'
-                      ? 'Project'
+                    {deal.buyer === 'Кошелек проекта'
+                      ? 'Проект'
                       : `${deal.buyer.slice(0, 6)}...${deal.buyer.slice(-4)}`}
                   </td>
                   <td>
-                    {deal.seller === 'N/A'
-                      ? 'N/A'
+                    {deal.seller === 'Н/Д'
+                      ? 'Н/Д'
                       : `${deal.seller.slice(0, 6)}...${deal.seller.slice(-4)}`}
                   </td>
                 </tr>
