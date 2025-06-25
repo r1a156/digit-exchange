@@ -129,36 +129,6 @@
         </div>
       `;
     };
-    // Повторная обработка XLSX
-    let g_isXlsx = false;
-    let g_fileData = {};
-    function filledCell(cell) {
-      return cell !== null && cell !== undefined && cell !== '';
-    }
-    function loadFileData(filename) {
-      if (!window.XLSX) {
-        console.error('XLSX library not loaded');
-        return "";
-      }
-      if (g_isXlsx && g_fileData[filename]) {
-        try {
-          const workbook = XLSX.read(g_fileData[filename], { type: 'base64' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-          const filteredData = jsonData.filter(row => row.some(filledCell));
-          const headerRowIndex = filteredData.findIndex((row, index) =>
-            row.filter(filledCell).length >= (filteredData[index + 1]?.filter(filledCell).length || 0)
-          );
-          const csv = XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex || 0)));
-          return csv;
-        } catch (error) {
-          console.error('Error processing XLSX:', error);
-          return "";
-        }
-      }
-      return "";
-    }
   </script>
   <!-- Зависимости через CDN -->
   <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -166,7 +136,10 @@
   <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/tonweb@2.0.0/dist/tonweb.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@tonconnect/sdk@2.0.0/dist/tonconnect-sdk.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/chart.js@4.4.4/dist/chart.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js" crossorigin="anonymous"></script>
   <!-- React-приложение -->
   <script type="text/babel">
     console.log('Starting React app...');
@@ -244,16 +217,17 @@
         manifestUrl: '/tonconnect-manifest.json',
         walletsList: ['tonkeeper', 'telegram-wallet', 'mytonwallet']
       }) : null;
+      const TON_FEE = 0.05; // Комиссия TON за транзакцию
 
       const prices = [
-        { deal: 1, Pi: 10, Ri: 10, Si: 0, royalty: 10 },
-        { deal: 2, Pi: 11, Ri: 15, Si: 7.7, royalty: 3.3 },
-        { deal: 3, Pi: 15.7142857143, Ri: 22.4489795918, Si: 11, royalty: 4.7142857143 },
-        { deal: 4, Pi: 22.5, Ri: 33.75, Si: 15.75, royalty: 6.75 },
-        { deal: 5, Pi: 33.75, Ri: 50.625, Si: 23.625, royalty: 10.125 },
-        { deal: 6, Pi: 50.625, Ri: 75.9375, Si: 35.4375, royalty: 15.1875 },
-        { deal: 7, Pi: 75.9375, Ri: 113.90625, Si: 53.15625, royalty: 22.78125 },
-        { deal: 8, Pi: 113.90625, Ri: 170.859375, Si: 79.734375, royalty: 34.171875 },
+        { deal: 1, Pi: 10, Ri: 10, Si: 7, royalty: 3 },
+        { deal: 2, Pi: 11, Ri: 15.714285714285714, Si: 11, royalty: 4.714285714285714 },
+        { deal: 3, Pi: 15.714285714285714, Ri: 22.410714285714286, Si: 15.6875, royalty: 6.723214285714286 },
+        { deal: 4, Pi: 22.5, Ri: 30.9375, Si: 21.65625, royalty: 9.28125 },
+        { deal: 5, Pi: 33.75, Ri: 46.40625, Si: 32.484375, royalty: 13.921875 },
+        { deal: 6, Pi: 50.625, Ri: 69.609375, Si: 48.7265625, royalty: 20.8828125 },
+        { deal: 7, Pi: 75.9375, Ri: 104.4140625, Si: 73.08984375, royalty: 31.32421875 },
+        { deal: 8, Pi: 113.90625, Ri: 156.62109375, Si: 109.634765625, royalty: 46.986328125 },
         { deal: 9, Pi: 113.90625, Ri: 113.90625, Si: 113.90625, royalty: 0 }
       ];
 
@@ -301,7 +275,7 @@
         try {
           const balance = await ton.getBalance(address);
           console.log(`Balance for ${address}: ${balance / 1e9} TON`);
-          return balance / 1e9 >= required;
+          return balance / 1e9 >= (required + TON_FEE);
         } catch (e) {
           setError(`Ошибка проверки баланса: ${e.message}`);
           return false;
@@ -328,7 +302,7 @@
         }
       }, [wallets, ton]);
 
-      // Mock fetchHistory
+      // Fetch history
       const fetchHistory = useCallback(async () => {
         try {
           const mockHistory = [
@@ -337,9 +311,9 @@
               buyer: 'user1',
               seller: 'Platform',
               Pi: '10.00',
-              Ri: '15.00',
-              Si: '0.00',
-              royalty: '10.00',
+              Ri: '10.00',
+              Si: '7.00',
+              royalty: '3.00',
               timestamp: new Date().toLocaleString()
             }
           ];
@@ -386,7 +360,7 @@
           setError('Недействительный номер сделки');
           return;
         }
-        const { Pi: requiredPi, royalty } = prices[dealIndex];
+        const { Pi: requiredPi, royalty, Si: sellerAmount } = prices[dealIndex];
         const userWallet = wallets[userKey];
         const sellerKey = currentDeal === 1 ? 'Platform' : `user${currentDeal - 1}`;
         const sellerWallet = currentDeal === 1 ? projectWallet : wallets[sellerKey] || projectWallet;
@@ -400,13 +374,12 @@
           return;
         }
         if (!(await checkBalance(userWallet, requiredPi))) {
-          setError(`Недостаточно TON для ${userKey}! Требуется: ${requiredPi} TON`);
+          setError(`Недостаточно TON для ${userKey}! Требуется: ${requiredPi + TON_FEE} TON`);
           return;
         }
 
         try {
           setIsLoading(true);
-          // TODO: Replace with real TON contract in production
           const contract = new MockTonContract({
             provider: ton,
             address: 'YOUR_CONTRACT_ADDRESS',
@@ -414,24 +387,21 @@
           });
           const tx = await contract.methods.upgradeDigit().send({
             from: userWallet,
-            value: ton.utils.toNano(requiredPi)
+            value: ton.utils.toNano(requiredPi + TON_FEE)
           });
-
-          const isFirstDeal = currentDeal === 1;
-          const isFinalDeal = currentDeal === 9;
-          const sellerAmount = isFirstDeal ? 0 : isFinalDeal ? requiredPi : requiredPi * 0.7;
 
           setBalances(prev => ({
             ...prev,
-            [userKey]: (prev[userKey] || 0) - requiredPi,
+            [userKey]: (prev[userKey] || 0) - (requiredPi + TON_FEE),
             Project: (prev.Project || 0) + royalty,
             [sellerKey]: sellerKey === 'Platform' ? prev.Project : (prev[sellerKey] || 0) + sellerAmount
           }));
 
+          const profit = currentDeal < 9 ? (prices[currentDeal]?.Pi || 0) - requiredPi - TON_FEE : sellerAmount - requiredPi - TON_FEE;
           setProfits(prev => ({
             ...prev,
             Project: (prev.Project || 0) + royalty,
-            [sellerKey]: sellerKey === 'Platform' ? prev.Project : (prev[sellerKey] || 0) + sellerAmount
+            [userKey]: (prev[userKey] || 0) + profit
           }));
 
           setHistory(prev => [{
@@ -439,419 +409,4 @@
             buyer: userKey,
             seller: sellerKey,
             Pi: requiredPi.toFixed(2),
-            Ri: (requiredPi * 1.5).toFixed(2),
-            Si: sellerAmount.toFixed(2),
-            royalty: royalty.toFixed(2),
-            timestamp: new Date().toLocaleString()
-          }, ...prev]);
-
-          setCurrentDeal(prev => Math.min(prev + 1, 10));
-          setError(`Сделка #${currentDeal} выполнена: ${requiredPi} TON`);
-
-          if (currentDeal === 9) {
-            await autoBuyout();
-          }
-        } catch (e) {
-          setError(`Ошибка сделки для ${userKey}: ${e.message}`);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      // Auto buyout
-      const autoBuyout = async () => {
-        if (!ton) {
-          setError('TonWeb не загружен');
-          return;
-        }
-        const requiredSi = prices[8]?.Si || 0;
-        if (!(await checkBalance(projectWallet, requiredSi))) {
-          setError(`Недостаточно TON на проекте! Требуется: ${requiredSi} TON`);
-          return;
-        }
-
-        try {
-          setIsLoading(true);
-          // TODO: Replace with real TON contract in production
-          const contract = new MockTonContract({
-            provider: ton,
-            address: 'YOUR_CONTRACT_ADDRESS',
-            abi: 'YOUR_CONTRACT_ABI'
-          });
-          const tx = await contract.methods.buyoutDigit().send({
-            from: projectWallet,
-            value: ton.utils.toNano(requiredSi)
-          });
-
-          setBalances(prev => ({
-            ...prev,
-            Project: (prev.Project || 0) - requiredSi,
-            user8: (prev.user8 || 0) + requiredSi
-          }));
-
-          setProfits(prev => ({
-            ...prev,
-            user8: (prev.user8 || 0) + requiredSi
-          }));
-
-          setHistory(prev => [{
-            deal: '9',
-            buyer: 'Project',
-            seller: 'user8',
-            Pi: requiredSi.toFixed(2),
-            Ri: requiredSi.toFixed(2),
-            Si: requiredSi.toFixed(2),
-            royalty: '0.00',
-            timestamp: new Date().toLocaleString()
-          }, ...prev]);
-
-          setError(`Выкуп выполнен: ${requiredSi} TON для user8`);
-        } catch (e) {
-          setError(`Ошибка выкупа: ${e.message}`);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      // Export to XLSX
-      const exportToXLSX = () => {
-        if (!window.XLSX) {
-          setError('XLSX библиотека не загружена');
-          return;
-        }
-        if (!history.length) {
-          setError('История транзакций пуста');
-          return;
-        }
-        const ws = XLSX.utils.json_to_sheet(history);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'История');
-        XLSX.writeFile(wb, 'DigitExchange_History.xlsx');
-      };
-
-      // File upload
-      const handleFileUpload = (e) => {
-        if (!window.XLSX) {
-          setError('XLSX библиотека не загружена');
-          return;
-        }
-        const file = e.target.files[0];
-        if (!file || !file.name.toLowerCase().endsWith('.xlsx')) {
-          setError('Требуется файл .xlsx');
-          return;
-        }
-        if (file.size > 10 * 1024 * 1024) {
-          setError('Файл слишком большой (макс. 10 МБ)');
-          return;
-        }
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          try {
-            g_isXlsx = true;
-            g_fileData[file.name] = event.target.result.split(',')[1];
-            const csv = loadFileData(file.name);
-            const rows = csv.split('\n').map(row => row.split(',').map(cell => cell.trim()));
-            setUploadedData(rows.filter(row => row.some(cell => cell)));
-            setError('Файл загружен успешно');
-          } catch (err) {
-            setError(`Ошибка обработки файла: ${err.message}`);
-          }
-        };
-        reader.readAsDataURL(file);
-      };
-
-      // Load dependencies (Chart.js and QRCode disabled for debugging)
-      useEffect(() => {
-        console.log('Loading dependencies...');
-        setDependenciesLoaded(true); // Временно обходим загрузку Chart.js и QRCode
-        /*
-        Promise.all([
-          import('https://unpkg.com/chart.js@4.4.4/dist/chart.min.js').catch(() => null),
-          import('https://unpkg.com/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js').catch(() => null),
-          import('https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js').catch(() => null)
-        ]).then(([chartModule, zoomModule, qrcodeModule]) => {
-          console.log('Dependencies loaded:', chartModule, zoomModule, qrcodeModule);
-          window.Chart = chartModule?.default || null;
-          window['chartjs-plugin-zoom'] = zoomModule?.default || null;
-          window.QRCode = qrcodeModule || null;
-
-          if (window.QRCode && document.getElementById('qrcode')) {
-            window.QRCode.toCanvas(document.getElementById('qrcode'), projectWallet, { width: 100, margin: 1 }, err => {
-              if (err) setError('Ошибка создания QR-кода');
-            });
-          }
-
-          if (window.Chart && window['chartjs-plugin-zoom'] && document.getElementById('priceChart')) {
-            window.Chart.register(window['chartjs-plugin-zoom']);
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            new window.Chart(ctx, {
-              type: 'line',
-              data: {
-                labels: prices.map(p => `Сделка ${p.deal}`),
-                datasets: [
-                  { label: 'Цена Ri', data: prices.map(p => p.Ri), borderColor: '#10b981', fill: false, tension: 0.3 },
-                  { label: 'Цена Pi', data: prices.map(p => p.Pi), borderColor: '#3b82f6', fill: false, tension: 0.3 },
-                  { label: 'Выплата Si', data: prices.map(p => p.Si), borderColor: '#ef4444', fill: false, tension: 0.3 }
-                ]
-              },
-              options: {
-                responsive: true,
-                plugins: {
-                  title: { display: true, text: 'Динамика цен (TON)', color: '#fff', font: { size: 16 } },
-                  zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } }
-                },
-                scales: {
-                  y: { beginAtZero: false, title: { display: true, text: 'Сумма (TON)', color: '#fff' }, ticks: { color: '#fff' } },
-                  x: { title: { display: true, text: 'Сделка', color: '#fff' }, ticks: { color: '#fff' } }
-                }
-              }
-            });
-          }
-          setDependenciesLoaded(true);
-        }).catch(err => {
-          console.error('Error loading dependencies:', err);
-          setError('Ошибка загрузки библиотек');
-          setDependenciesLoaded(true);
-        });
-        */
-      }, []);
-
-      // Fetch data
-      useEffect(() => {
-        console.log('Fetching initial data...');
-        if (ton) fetchBalances();
-        fetchHistory();
-        const interval = setInterval(() => {
-          if (ton) fetchBalances();
-          fetchHistory();
-        }, 120000);
-        return () => clearInterval(interval);
-      }, [fetchBalances, fetchHistory, ton]);
-
-      // Copy to clipboard
-      const copyToClipboard = () => {
-        navigator.clipboard.writeText(projectWallet).then(() => {
-          setError('Адрес скопирован');
-        }).catch(() => {
-          const textarea = document.createElement('textarea');
-          textarea.value = projectWallet;
-          document.body.appendChild(textarea);
-          textarea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textarea);
-          setError('Адрес скопирован (альтернативный метод)');
-        });
-      };
-
-      // Render user panel
-      const renderUserPanel = (userKey) => (
-        <div className="bg-gray-700 p-4 rounded-lg shadow-lg transition fade-in">
-          <h3 className="text-lg font-semibold text-white">Пользователь {userKey}</h3>
-          <p className="text-gray-400 wallet-address">
-            Кошелёк: {wallets[userKey] ? `${wallets[userKey].slice(0, 6)}...` : 'Не подключён'}
-          </p>
-          <p className="text-gray-400">Баланс: {(balances[userKey] || 0).toFixed(2)} TON</p>
-          <p className="text-gray-400">Прибыль: {(profits[userKey] || 0).toFixed(2)} TON</p>
-          <button
-            className="mt-2 w-full px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition disabled:bg-gray-600"
-            onClick={() => upgradeDigit(userKey)}
-            disabled={isLoading || currentDeal !== parseInt(userKey.replace('user', ''))}
-          >
-            {isLoading ? <span className="loader mr-2"></span> : null}
-            Прокачать цифру ({(prices[currentDeal - 1]?.Pi || 0).toFixed(2)} TON)
-          </button>
-          <button
-            className="mt-2 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-600"
-            onClick={() => connectWallet(userKey)}
-            disabled={isLoading || wallets[userKey]}
-          >
-            {wallets[userKey] ? 'Кошелёк подключён' : 'Подключить кошелёк'}
-          </button>
-        </div>
-      );
-
-      // Timeout для отображения ошибки
-      useEffect(() => {
-        const timeout = setTimeout(() => {
-          if (!dependenciesLoaded) {
-            document.getElementById('root').innerHTML = `
-              <div className="error-boundary">
-                <h2 className="text-2xl text-red-600">Ошибка загрузки</h2>
-                <p className="text-gray-300">Не удалось загрузить зависимости. Проверьте соединение.</p>
-                <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">
-                  Перезагрузить
-                </button>
-              </div>
-            `;
-          }
-        }, 10000);
-        return () => clearTimeout(timeout);
-      }, [dependenciesLoaded]);
-
-      if (!dependenciesLoaded) {
-        return <div className="text-center text-gray-400 p-4">Загрузка...</div>;
-      }
-
-      console.log('Rendering UI...');
-      return (
-        <ErrorBoundary>
-          <div className="min-h-screen flex flex-col items-center p-4">
-            <header className="w-full max-w-6xl flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <svg className="w-8 h-8 text-emerald-500 logo-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 16c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" />
-                  <path d="M12 6c-3.31 0-6 2.69 6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" />
-                </svg>
-                <h1 className="text-2xl md:text-3xl font-bold text-white">Цифра Биржа</h1>
-              </div>
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-600"
-                onClick={() => connectWallet(`user${currentDeal}`)}
-                disabled={isLoading || wallets[`user${currentDeal}`]}
-              >
-                {connectedWallet ? `${connectedWallet.slice(0, 6)}...` : 'Подключить кошелёк'}
-              </button>
-            </header>
-
-            <main className="w-full max-w-6xl bg-gray-800 rounded-lg p-6 shadow-xl">
-              {error && (
-                <p className="text-center text-red-600 bg-red-600/10 p-3 rounded-lg mb-6 error-message">{error}</p>
-              )}
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-semibold text-white">Сделка #{currentDeal}</h2>
-                <p className="text-gray-400">Текущий пользователь: {currentDeal === 1 ? 'Platform' : `user${currentDeal}`}</p>
-                <div className="flex justify-center items-center gap-2 text-gray-400 mt-2">
-                  <span>Кошелёк проекта:</span>
-                  <span className="font-mono wallet-address">{projectWallet.slice(0, 6)}...</span>
-                  <svg
-                    className="w-5 h-5 text-blue-400 copy-button"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    onClick={copyToClipboard}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V4a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div id="qrcode" className="mt-4 mx-auto"></div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-700 p-4 rounded-lg shadow-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">Текущая сделка</h3>
-                  <p className="text-gray-400">Цена покупки (Pi): {(prices[currentDeal - 1]?.Pi || 0).toFixed(2)} TON</p>
-                  <p className="text-gray-400">Цена перепродажи (Ri): {(prices[currentDeal - 1]?.Ri || 0).toFixed(2)} TON</p>
-                  <p className="text-gray-400">Выплата продавцу (Si): {(prices[currentDeal - 1]?.Si || 0).toFixed(2)} TON</p>
-                  <p className="text-gray-400">Роялти: {(prices[currentDeal - 1]?.royalty || 0).toFixed(2)} TON</p>
-                </div>
-                <div className="bg-gray-700 p-4 rounded-lg shadow-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">Распределение</h3>
-                  <p className="text-gray-400">Роялти: {currentDeal === 1 ? '100%' : currentDeal === 9 ? '0%' : '30%'} ({(prices[currentDeal - 1]?.royalty || 0).toFixed(2)} TON)</p>
-                  <p className="text-gray-400">Сервисный сбор: 0% (0 TON)</p>
-                  <p className="text-gray-400">Продавцу: {currentDeal === 1 ? '0%' : currentDeal === 9 ? '100%' : '70%'} ({(prices[currentDeal - 1]?.Si || 0).toFixed(2)} TON)</p>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 p-4 rounded-lg mb-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-white mb-2">Загрузка XLSX</h3>
-                <input
-                  type="file"
-                  accept=".xlsx"
-                  className="w-full p-2 bg-gray-600 rounded-lg text-white"
-                  onChange={handleFileUpload}
-                />
-                {uploadedData && (
-                  <div className="mt-4 overflow-x-auto">
-                    <h4 className="text-md font-semibold text-white mb-2">Данные файла</h4>
-                    <table>
-                      <tbody>
-                        {uploadedData.map((row, i) => (
-                          <tr key={i}>
-                            {row.map((cell, j) => (
-                              <td key={j}>{cell}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {['user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7', 'user8'].map(renderUserPanel)}
-                <div className="bg-gray-700 p-4 rounded-lg shadow-lg transition fade-in">
-                  <h3 className="text-lg font-semibold text-white">Проект</h3>
-                  <p className="text-gray-400 wallet-address">Кошелёк: {projectWallet.slice(0, 6)}...</p>
-                  <p className="text-gray-400">Баланс: {(balances.Project || 0).toFixed(2)} TON</p>
-                  <p className="text-gray-400">Прибыль: {(profits.Project || 0).toFixed(2)} TON</p>
-                </div>
-              </div>
-
-              {history.length > 0 && (
-                <div className="bg-gray-700 p-4 rounded-lg mb-6 shadow-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">История транзакций</h3>
-                  <button
-                    className="w-full px-4 py-2 mb-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-600"
-                    onClick={exportToXLSX}
-                    disabled={!history.length}
-                  >
-                    Экспорт в XLSX
-                  </button>
-                  <div className="overflow-x-auto">
-                    <table>
-                      <thead>
-                        <tr className="bg-gray-600 text-white">
-                          <th>Сделка</th>
-                          <th>Покупатель</th>
-                          <th>Продавец</th>
-                          <th>Pi (TON)</th>
-                          <th>Ri (TON)</th>
-                          <th>Si (TON)</th>
-                          <th>Роялти</th>
-                          <th>Время</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {history.map((tx, i) => (
-                          <tr key={i}>
-                            <td>{tx.deal}</td>
-                            <td>{tx.buyer}</td>
-                            <td>{tx.seller}</td>
-                            <td>{tx.Pi}</td>
-                            <td>{tx.Ri}</td>
-                            <td>{tx.Si}</td>
-                            <td>{tx.royalty}</td>
-                            <td>{tx.timestamp}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {currentDeal === 10 && (
-                <div className="bg-gray-700 p-4 rounded-lg shadow-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">Итоговые прибыли</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {Object.entries(profits).map(([user, profit]) => (
-                      <p key={user} className="text-gray-400">{user}: {profit.toFixed(2)} TON</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </main>
-
-            <footer className="w-full max-w-6xl mt-6 text-center">
-              <p className="text-gray-400">© {new Date().getFullYear()} Цифра Биржа. Все права защищены.</p>
-            </footer>
-          </div>
-        </ErrorBoundary>
-      );
-    };
-
-    console.log('Initializing React root...');
-    const root = createRoot(document.getElementById('root'));
-    root.render(<DigitExchange />);
-  </script>
-</body>
-</html>
+            Ri: prices[dealIndex
