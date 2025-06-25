@@ -16,9 +16,9 @@ export default function Home() {
     setIsClient(true);
   }, []);
 
-  // Данные о сделках
+  // Данные о сделках (изменена сделка #1)
   const deals = [
-    { i: 1, P: 10, R: 10, S: 7, royalty: 3 },
+    { i: 1, P: 10, R: 10, S: 0, royalty: 0 }, // Изменено: вся сумма 10 TON идет проекту
     { i: 2, P: 11, R: 15.714285714285714, S: 11, royalty: 4.714285714285714 },
     { i: 3, P: 15.714285714285714, R: 22.5, S: 15.75, royalty: 6.75 },
     { i: 4, P: 22.5, R: 33.75, S: 23.625, royalty: 10.125 },
@@ -88,7 +88,8 @@ export default function Home() {
         },
       ];
 
-      if (currentDeal !== 1) {
+      // Для сделок 2–8 добавляем выплату продавцу, если установлен
+      if (currentDeal !== 1 && sellerAddress) {
         messages.push({
           address: sellerAddress,
           amount: (deal.S * 1e9).toString(),
@@ -164,7 +165,11 @@ export default function Home() {
         <h1 className={styles.title}>Цифровой Обмен</h1>
 
         <section className={styles.section}>
-          {isClient && <TonConnectButton />}
+          {isClient && (
+            <div className={styles.walletButtonContainer}>
+              <TonConnectButton />
+            </div>
+          )}
           {isClient && tonConnectUI?.connected && (
             <div className={styles.walletInfo}>
               <p>
@@ -209,36 +214,38 @@ export default function Home() {
 
         <section className={styles.section}>
           <h2>История сделок</h2>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Сделка</th>
-                <th>Цена (P_i, TON)</th>
-                <th>Выплата продавцу (S_i, TON)</th>
-                <th>Покупатель</th>
-                <th>Продавец</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dealHistory.map((deal) => (
-                <tr key={deal.i}>
-                  <td>{deal.i}</td>
-                  <td>{deal.P.toFixed(2)}</td>
-                  <td>{deal.S.toFixed(2)}</td>
-                  <td>
-                    {deal.buyer === 'Кошелек проекта'
-                      ? 'Проект'
-                      : `${deal.buyer.slice(0, 6)}...${deal.buyer.slice(-4)}`}
-                  </td>
-                  <td>
-                    {deal.seller === 'Н/Д'
-                      ? 'Н/Д'
-                      : `${deal.seller.slice(0, 6)}...${deal.seller.slice(-4)}`}
-                  </td>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Сделка</th>
+                  <th>Цена (P_i, TON)</th>
+                  <th>Выплата продавцу (S_i, TON)</th>
+                  <th>Покупатель</th>
+                  <th>Продавец</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {dealHistory.map((deal) => (
+                  <tr key={deal.i}>
+                    <td>{deal.i}</td>
+                    <td>{deal.P.toFixed(2)}</td>
+                    <td>{deal.S.toFixed(2)}</td>
+                    <td>
+                      {deal.buyer === 'Кошелек проекта'
+                        ? 'Проект'
+                        : `${deal.buyer.slice(0, 6)}...${deal.buyer.slice(-4)}`}
+                    </td>
+                    <td>
+                      {deal.seller === 'Н/Д'
+                        ? 'Н/Д'
+                        : `${deal.seller.slice(0, 6)}...${deal.seller.slice(-4)}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </main>
     </div>
