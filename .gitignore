@@ -1,0 +1,22 @@
+# Игнорировать системные файлы и папки
+node_modules/
+.DS_Store
+*.log
+*.lnk
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.env
+
+# Игнорировать папки сборки
+dist/
+build/
+
+# Игнорировать пользовательские и временные файлы
+.bash_history
+.gitconfig
+*.jpg
+*.png
+*.webp
+*.docx
