@@ -78,6 +78,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  min-width: 600px; /* Минимальная ширина для горизонтальной прокрутки */
 }
 
 .table th,
@@ -87,12 +88,32 @@
   text-align: center;
   font-size: 0.9rem; /* Уменьшенный шрифт для мобильных */
   word-wrap: break-word; /* Перенос длинных слов */
+  white-space: nowrap; /* Предотвращение обрезания текста */
 }
 
 .table th {
   background: #0070f3;
   color: white;
 }
+
+/* Новый контейнер для таблицы с горизонтальной прокруткой */
+.tableContainer {
+  overflow-x: auto; /* Горизонтальная прокрутка */
+  -webkit-overflow-scrolling: touch; /* Плавная прокрутка на iOS */
+  width: 100%;
+}
+
+/* Уменьшение ширины столбцов для мобильных */
+.table th:nth-child(1),
+.table td:nth-child(1) { width: 10%; } /* Сделка */
+.table th:nth-child(2),
+.table td:nth-child(2) { width: 20%; } /* Цена */
+.table th:nth-child(3),
+.table td:nth-child(3) { width: 20%; } /* Выплата */
+.table th:nth-child(4),
+.table td:nth-child(4) { width: 25%; } /* Покупатель */
+.table th:nth-child(5),
+.table td:nth-child(5) { width: 25%; } /* Продавец */
 
 .info {
   color: #555;
@@ -127,6 +148,7 @@
 
   .table {
     font-size: 0.8rem; /* Ещё меньше для таблиц */
+    min-width: 400px; /* Уменьшенная минимальная ширина */
   }
 
   .table th,
@@ -144,5 +166,9 @@
   .logo {
     width: 60px;
     height: 60px;
+  }
+
+  .table {
+    min-width: 300px; /* Ещё меньше для очень маленьких экранов */
   }
 }
