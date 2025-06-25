@@ -1,38 +1,39 @@
 .container {
-  padding: 0 2rem;
+  padding: 0 1rem; /* Уменьшенный отступ для мобильных */
 }
 
 .main {
   min-height: 100vh;
-  padding: 4rem 0;
+  padding: 2rem 0; /* Уменьшенный верхний/нижний отступ */
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* Выравнивание сверху для компактности */
   align-items: center;
 }
 
 .logo {
-  width: 100px;
-  height: 100px;
-  margin-bottom: 2rem;
+  width: 80px; /* Уменьшен размер логотипа для мобильных */
+  height: 80px;
+  margin-bottom: 1.5rem;
 }
 
 .title {
   margin: 0;
   line-height: 1.15;
-  font-size: 4rem;
+  font-size: 2rem; /* Уменьшен размер шрифта для мобильных */
   text-align: center;
   color: #0070f3;
 }
 
 .section {
-  margin: 2rem 0;
-  padding: 2rem;
+  margin: 1.5rem 0; /* Уменьшенный отступ между секциями */
+  padding: 1rem; /* Уменьшенный внутренний отступ */
   background: #f9f9f9;
   border-radius: 8px;
   width: 100%;
-  max-width: 800px;
+  max-width: 100%; /* Полная ширина на мобильных */
+  box-sizing: border-box; /* Учитывать padding в ширине */
 }
 
 .walletInfo {
@@ -42,6 +43,7 @@
   border: 1px solid #ddd;
   border-radius: 8px;
   text-align: center;
+  width: 100%; /* Полная ширина */
 }
 
 .dealInfo {
@@ -51,17 +53,20 @@
   border: 1px solid #ddd;
   border-radius: 8px;
   text-align: center;
+  width: 100%; /* Полная ширина */
 }
 
 .button {
   background: #0070f3;
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1rem; /* Уменьшенный размер кнопки для мобильных */
   border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem; /* Уменьшенный отступ сверху */
+  width: 100%; /* Полная ширина кнопки */
+  box-sizing: border-box;
 }
 
 .button:disabled {
@@ -80,6 +85,8 @@
   border: 1px solid #ddd;
   padding: 0.5rem;
   text-align: center;
+  font-size: 0.9rem; /* Уменьшенный шрифт для мобильных */
+  word-wrap: break-word; /* Перенос длинных слов */
 }
 
 .table th {
@@ -91,25 +98,51 @@
   color: #555;
   text-align: center;
   margin-top: 1rem;
+  font-size: 0.9rem; /* Уменьшенный шрифт */
 }
 
-/* Новый стиль для центрирования кнопки кошелька */
+/* Контейнер для кнопки кошелька */
 .walletButtonContainer {
   display: flex;
   justify-content: center;
   margin-bottom: 1rem;
+  width: 100%; /* Полная ширина */
 }
 
+/* Улучшенные настройки для мобильных */
 @media (max-width: 600px) {
   .title {
-    font-size: 2.5rem;
+    font-size: 1.8rem; /* Ещё меньше для очень маленьких экранов */
   }
 
   .section {
-    padding: 1rem;
+    padding: 0.5rem; /* Ещё меньше внутреннего отступа */
   }
 
+  .walletInfo p,
+  .dealInfo p {
+    margin: 0.5rem 0; /* Равномерные отступы между строками */
+    font-size: 0.9rem; /* Уменьшенный шрифт */
+  }
+
+  .table {
+    font-size: 0.8rem; /* Ещё меньше для таблиц */
+  }
+
+  .table th,
+  .table td {
+    padding: 0.3rem; /* Уменьшенный внутренний отступ в таблице */
+  }
+}
+
+@media (max-width: 400px) {
   .button {
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.8rem; /* Ещё меньше для очень маленьких экранов */
+    font-size: 0.9rem;
+  }
+
+  .logo {
+    width: 60px;
+    height: 60px;
   }
 }
