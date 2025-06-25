@@ -9,6 +9,12 @@ export default function Home() {
   const [currentDeal, setCurrentDeal] = useState(1);
   const [dealHistory, setDealHistory] = useState([]);
   const [sellerAddress, setSellerAddress] = useState(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Устанавливаем флаг клиентской стороны
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Данные о сделках
   const deals = [
@@ -25,7 +31,7 @@ export default function Home() {
 
   // Проверка баланса
   useEffect(() => {
-    if (tonConnectUI.account?.address) {
+    if (isClient && tonConnectUI?.account?.address) {
       async function fetchBalance() {
         try {
           const response = await fetch(
@@ -40,11 +46,11 @@ export default function Home() {
       }
       fetchBalance();
     }
-  }, [tonConnectUI.account]);
+  }, [isClient, tonConnectUI]);
 
   // Установка продавца
   const handleSetSeller = async () => {
-    if (tonConnectUI.connected) {
+    if (isClient && tonConnectUI?.connected) {
       setSellerAddress(tonConnectUI.account.address);
       alert('Seller wallet set!');
     } else {
@@ -54,10 +60,12 @@ export default function Home() {
 
   // Заключение сделки (1–8)
   const handleDeal = async () => {
+    if (!isClient) return;
+
     const deal = deals[currentDeal - 1];
     const requiredAmount = deal.P + 0.05;
 
-    if (!tonConnectUI.connected) {
+    if (!tonConnectUI?.connected) {
       alert('Please connect your wallet first.');
       return;
     }
@@ -110,7 +118,7 @@ export default function Home() {
 
   // Автоматический выкуп для сделки 9
   useEffect(() => {
-    if (currentDeal === 9 && sellerAddress) {
+    if (isClient && currentDeal === 9 && sellerAddress) {
       const deal = deals[8];
       fetch('/api/autobuy', {
         method: 'POST',
@@ -140,7 +148,7 @@ export default function Home() {
           alert('Auto-buy failed. Please try again.');
         });
     }
-  }, [currentDeal, sellerAddress]);
+  }, [isClient, currentDeal, sellerAddress]);
 
   return (
     <div className={styles.container}>
@@ -156,11 +164,17 @@ export default function Home() {
         <h1 className={styles.title}>Digit Exchange</h1>
 
         <section className={styles.section}>
-          <TonConnectButton />
-          {tonConnectUI.connected && (
+          {isClient && <TonConnectButton />}
+          {isClient && tonConnectUI?.connected && (
             <div className={styles.walletInfo}>
-              <p><strong>Wallet:</strong> {tonConnectUI.account.address.slice(0, 6)}...{tonConnectUI.account.address.slice(-4)}</p>
-              <p><strong>Balance:</strong> {walletBalance ? walletBalance.toFixed(2) : 'Loading...'} TON</p>
+              <p>
+                <strong>Wallet:</strong>{' '}
+                {tonConnectUI.account.address.slice(0, 6)}...{tonConnectUI.account.address.slice(-4)}
+              </p>
+              <p>
+                <strong>Balance:</strong>{' '}
+                {walletBalance ? walletBalance.toFixed(2) : 'Loading...'} TON
+              </p>
               <button className={styles.button} onClick={handleSetSeller}>
                 Set as Seller
               </button>
@@ -172,18 +186,24 @@ export default function Home() {
           <h2>Current Deal #{currentDeal}</h2>
           {currentDeal <= 8 && (
             <div className={styles.dealInfo}>
-              <p><strong>Price:</strong> {deals[currentDeal - 1].P.toFixed(2)} TON</p>
-              <p><strong>Seller Payout:</strong> {deals[currentDeal - 1].S.toFixed(2)} TON</p>
+              <p>
+                <strong>Price:</strong> {deals[currentDeal - 1].P.toFixed(2)} TON
+              </p>
+              <p>
+                <strong>Seller Payout:</strong> {deals[currentDeal - 1].S.toFixed(2)} TON
+              </p>
               <button
                 className={styles.button}
-                disabled={!tonConnectUI.connected || (currentDeal !== 1 && !sellerAddress)}
+                disabled={!isClient || !tonConnectUI?.connected || (currentDeal !== 1 && !sellerAddress)}
                 onClick={handleDeal}
               >
                 Buy Now
               </button>
             </div>
           )}
-          {currentDeal === 9 && <p className={styles.info}>Deal 9 will be auto-bought by the project.</p>}
+          {currentDeal === 9 && (
+            <p className={styles.info}>Deal 9 will be auto-bought by the project.</p>
+          )}
           {currentDeal > 9 && <p className={styles.info}>No more deals available.</p>}
         </section>
 
@@ -205,8 +225,16 @@ export default function Home() {
                   <td>{deal.i}</td>
                   <td>{deal.P.toFixed(2)}</td>
                   <td>{deal.S.toFixed(2)}</td>
-                  <td>{deal.buyer === 'Project Wallet' ? 'Project' : `${deal.buyer.slice(0, 6)}...${deal.buyer.slice(-4)}`}</td>
-                  <td>{deal.seller === 'N/A' ? 'N/A' : `${deal.seller.slice(0, 6)}...${deal.seller.slice(-4)}`}</td>
+                  <td>
+                    {deal.buyer === 'Project Wallet'
+                      ? 'Project'
+                      : `${deal.buyer.slice(0, 6)}...${deal.buyer.slice(-4)}`}
+                  </td>
+                  <td>
+                    {deal.seller === 'N/A'
+                      ? 'N/A'
+                      : `${deal.seller.slice(0, 6)}...${deal.seller.slice(-4)}`}
+                  </td>
                 </tr>
               ))}
             </tbody>
