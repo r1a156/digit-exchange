@@ -11,6 +11,7 @@ export default function Home() {
   const [sellerAddress, setSellerAddress] = useState(null);
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Схема сделок
   const deals = useMemo(() => [
@@ -23,6 +24,14 @@ export default function Home() {
     { i: 7, P: 26.336283206939697, R: 20.269026565551758, S: 20.269026565551758, royalty: 6.067256641387939 },
     { i: 8, P: 28, R: 20.8, S: 20.8, royalty: 7.2 },
   ], []);
+
+  // Очистка ошибок
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   // Установка флага клиентской стороны
   useEffect(() => {
@@ -46,7 +55,8 @@ export default function Home() {
           setIsLoading(true);
           console.log('Запрос баланса для адреса:', tonConnectUI.account.address);
           const response = await fetch(
-            `/api/getBalance?address=${encodeURIComponent(tonConnectUI.account.address)}`
+            `/api/getBalance?address=${encodeURIComponent(tonConnectUI.account.address)}`,
+            { signal: AbortSignal.timeout(5000) }
           );
           if (!response.ok) {
             throw new Error(`HTTP ошибка: ${response.status}`);
@@ -60,8 +70,8 @@ export default function Home() {
           console.log('Баланс загружен:', balance);
         } catch (error) {
           console.error('Ошибка получения баланса:', error.message);
+          setError('Не удалось загрузить баланс: ' + error.message);
           setWalletBalance(0);
-          alert('Не удалось загрузить баланс кошелька: ' + error.message);
         } finally {
           setIsLoading(false);
         }
@@ -74,35 +84,34 @@ export default function Home() {
   const handleSetSeller = useCallback(async () => {
     if (isClient && tonConnectUI?.connected) {
       setSellerAddress(tonConnectUI.account.address);
-      alert('Кошелек продавца установлен!');
+      setError('Кошелёк продавца установлен!');
     } else {
-      alert('Пожалуйста, подключите кошелек, чтобы установить его как продавца.');
+      setError('Подключите кошелёк, чтобы установить его как продавца.');
     }
   }, [isClient, tonConnectUI]);
 
   // Обработка сделки (1–7)
   const handleDeal = useCallback(async () => {
     if (!isClient || !tonConnectUI?.connected) {
-      alert('Пожалуйста, сначала подключите кошелек.');
+      setError('Подключите кошелёк.');
       return;
     }
 
     const deal = deals[currentDeal - 1];
     if (!deal || isNaN(deal.P) || isNaN(deal.S)) {
       console.error('Неверные данные сделки:', deal);
-      alert('Неверные данные сделки');
+      setError('Неверные данные сделки');
       return;
     }
 
     const requiredAmount = deal.P + 0.05;
-
     if (walletBalance === null || walletBalance < requiredAmount) {
-      alert(`Недостаточно средств. Требуется: ${requiredAmount.toFixed(2)} TON`);
+      setError(`Недостаточно средств. Требуется: ${requiredAmount.toFixed(2)} TON`);
       return;
     }
 
     if (currentDeal !== 1 && !sellerAddress) {
-      alert('Кошелек продавца не установлен.');
+      setError('Кошелёк продавца не установлен.');
       return;
     }
 
@@ -110,7 +119,7 @@ export default function Home() {
       setIsLoading(true);
       const messages = [
         {
-          address: process.env.NEXT_PUBLIC_PROJECT_WALLET,
+          address: process.env.NEXT_PUBLIC_PROJECT_WALLET || 'UQCJFymQcEZYOp8UbITHMaHo8HH8FPVzTWTrqxN6tB0O3_Kn',
           amount: (deal.P * 1e9).toString(),
         },
       ];
@@ -128,19 +137,19 @@ export default function Home() {
       };
 
       console.log('Отправка транзакции:', transaction);
-      await tonConnectUI.sendTransaction(transaction);
+      await tonConnectUI.sendTransaction(transaction, { payloads: [] });
 
       setDealHistory([
-        { ...deal, buyer: tonConnectUI.account.address, seller: sellerAddress || 'Н/Д' },
+        { ...deal, buyer: tonConnectUI.account.address, seller: currentDeal === 1 ? 'Платформа' : sellerAddress },
         ...dealHistory,
       ]);
       setCurrentDeal(currentDeal + 1);
       setSellerAddress(tonConnectUI.account.address);
 
-      alert(`Сделка ${currentDeal} успешно завершена!`);
+      setError(`Сделка #${currentDeal} успешно завершена!`);
     } catch (error) {
       console.error('Ошибка транзакции:', error.message);
-      alert('Транзакция не удалась: ' + error.message);
+      setError('Транзакция не удалась: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -149,8 +158,10 @@ export default function Home() {
   // Проверка баланса кошелька проекта
   const checkProjectWalletBalance = useCallback(async () => {
     try {
+      const projectWallet = process.env.NEXT_PUBLIC_PROJECT_WALLET || 'UQCJFymQcEZYOp8UbITHMaHo8HH8FPVzTWTrqxN6tB0O3_Kn';
       const response = await fetch(
-        `/api/getBalance?address=${encodeURIComponent(process.env.NEXT_PUBLIC_PROJECT_WALLET)}`
+        `/api/getBalance?address=${encodeURIComponent(projectWallet)}`,
+        { signal: AbortSignal.timeout(5000) }
       );
       if (!response.ok) {
         throw new Error(`HTTP ошибка: ${response.status}`);
@@ -199,17 +210,17 @@ export default function Home() {
 
           if (result.success) {
             setDealHistory([
-              { ...deal, buyer: 'Кошелек проекта', seller: sellerAddress },
+              { ...deal, buyer: 'Кошелёк проекта', seller: sellerAddress },
               ...dealHistory,
             ]);
             setCurrentDeal(9);
-            alert('Сделка 8 автоматически выкуплена кошельком проекта!');
+            setError('Сделка #8 автоматически выкуплена проектом!');
           } else {
             throw new Error(result.error || 'Неизвестная ошибка автовыкупа');
           }
         } catch (error) {
           console.error('Ошибка автовыкупа:', error.message);
-          alert('Автовыкуп не удался: ' + error.message);
+          setError('Автовыкуп не удался: ' + error.message);
         } finally {
           setIsLoading(false);
         }
@@ -227,9 +238,10 @@ export default function Home() {
         connected: tonConnectUI?.connected,
         sellerAddressRequired: currentDeal !== 1 && !sellerAddress,
         currentDeal,
+        walletBalance,
       });
     }
-  }, [isLoading, isClient, tonConnectUI, currentDeal, sellerAddress]);
+  }, [isLoading, isClient, tonConnectUI, currentDeal, sellerAddress, walletBalance]);
 
   return (
     <div className={styles.container}>
@@ -244,7 +256,12 @@ export default function Home() {
         <img src="/icon.svg" alt="Логотип Цифровой Обмен" className={styles.logo} />
         <h1 className={styles.title}>Цифровой Обмен</h1>
 
+        {error && (
+          <p className={styles.error}>{error}</p>
+        )}
+
         <section className={styles.section} aria-labelledby="wallet-heading">
+          <h2 id="wallet-heading" className={styles.sectionTitle}>Кошелёк</h2>
           {isClient && (
             <div className={styles.walletButtonContainer}>
               <TonConnectButton />
@@ -253,7 +270,7 @@ export default function Home() {
           {isClient && tonConnectUI?.connected && (
             <div className={styles.walletInfo}>
               <p>
-                <strong>Кошелек:</strong>{' '}
+                <strong>Кошелёк:</strong>{' '}
                 {tonConnectUI.account.address.slice(0, 6)}...{tonConnectUI.account.address.slice(-4)}
               </p>
               <p>
@@ -268,14 +285,17 @@ export default function Home() {
         </section>
 
         <section className={styles.section} aria-labelledby="deal-heading">
-          <h2 id="deal-heading">Текущая сделка #{currentDeal}</h2>
+          <h2 id="deal-heading" className={styles.sectionTitle}>Текущая сделка #{currentDeal}</h2>
           {currentDeal <= 7 && (
             <div className={styles.dealInfo}>
               <p>
-                <strong>Цена:</strong> {deals[currentDeal - 1].P.toFixed(2)} TON
+                <strong>Цена (Pi):</strong> {deals[currentDeal - 1].P.toFixed(2)} TON
               </p>
               <p>
-                <strong>Выплата продавцу:</strong> {deals[currentDeal - 1].S.toFixed(2)} TON
+                <strong>Выплата продавцу (Si):</strong> {deals[currentDeal - 1].S.toFixed(2)} TON
+              </p>
+              <p>
+                <strong>Роялти:</strong> {deals[currentDeal - 1].royalty.toFixed(2)} TON
               </p>
               <button
                 className={styles.button}
@@ -287,20 +307,21 @@ export default function Home() {
             </div>
           )}
           {currentDeal === 8 && (
-            <p className={styles.info}>Сделка 8 будет автоматически выкуплена проектом.</p>
+            <p className={styles.info}>Сделка #8 будет автоматически выкуплена проектом.</p>
           )}
           {currentDeal > 8 && <p className={styles.info}>Больше сделок нет.</p>}
         </section>
 
         <section className={styles.section} aria-labelledby="history-heading">
-          <h2 id="history-heading">История сделок</h2>
+          <h2 id="history-heading" className={styles.sectionTitle}>История сделок</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
                 <tr>
                   <th>Сделка</th>
-                  <th>Цена (P_i, TON)</th>
-                  <th>Выплата продавцу (S_i, TON)</th>
+                  <th>Цена (Pi, TON)</th>
+                  <th>Выплата (Si, TON)</th>
+                  <th>Роялти (TON)</th>
                   <th>Покупатель</th>
                   <th>Продавец</th>
                 </tr>
@@ -311,14 +332,15 @@ export default function Home() {
                     <td>{deal.i}</td>
                     <td>{deal.P.toFixed(2)}</td>
                     <td>{deal.S.toFixed(2)}</td>
+                    <td>{deal.royalty.toFixed(2)}</td>
                     <td>
-                      {deal.buyer === 'Кошелек проекта'
+                      {deal.buyer === 'Кошелёк проекта'
                         ? 'Проект'
                         : `${deal.buyer.slice(0, 6)}...${deal.buyer.slice(-4)}`}
                     </td>
                     <td>
-                      {deal.seller === 'Н/Д'
-                        ? 'Н/Д'
+                      {deal.seller === 'Платформа'
+                        ? 'Платформа'
                         : `${deal.seller.slice(0, 6)}...${deal.seller.slice(-4)}`}
                     </td>
                   </tr>
