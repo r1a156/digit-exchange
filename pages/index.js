@@ -12,7 +12,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Схема сделок с автоматическим выкупом для сделки #8
+  // Схема сделок
   const deals = useMemo(() => [
     { i: 1, P: 1.625, R: 0.5, S: 0.5, royalty: 1.125 },
     { i: 2, P: 3.234375, R: 1.7875, S: 1.7875, royalty: 1.446875 },
@@ -27,14 +27,24 @@ export default function Home() {
   // Установка флага клиентской стороны
   useEffect(() => {
     setIsClient(true);
+    console.log('isClient установлен в true');
   }, []);
+
+  // Отладка состояния подключения кошелька
+  useEffect(() => {
+    console.log('Состояние tonConnectUI:', {
+      connected: tonConnectUI?.connected,
+      address: tonConnectUI?.account?.address,
+    });
+  }, [tonConnectUI]);
 
   // Получение баланса кошелька
   useEffect(() => {
-    if (isClient && tonConnectUI?.account?.address) {
+    if (isClient && tonConnectUI?.connected && tonConnectUI?.account?.address) {
       async function fetchBalance() {
         try {
           setIsLoading(true);
+          console.log('Запрос баланса для адреса:', tonConnectUI.account.address);
           const response = await fetch(
             `/api/getBalance?address=${encodeURIComponent(tonConnectUI.account.address)}`
           );
@@ -45,7 +55,9 @@ export default function Home() {
           if (data.error) {
             throw new Error(data.error);
           }
-          setWalletBalance(data.result.balance / 1e9);
+          const balance = data.result.balance / 1e9;
+          setWalletBalance(balance);
+          console.log('Баланс загружен:', balance);
         } catch (error) {
           console.error('Ошибка получения баланса:', error.message);
           setWalletBalance(0);
@@ -111,7 +123,7 @@ export default function Home() {
       }
 
       const transaction = {
-        validUntil: Math.floor(Date.now() / 1000) + 300, // Увеличено до 5 минут
+        validUntil: Math.floor(Date.now() / 1000) + 300,
         messages,
       };
 
@@ -134,7 +146,7 @@ export default function Home() {
     }
   }, [isClient, tonConnectUI, walletBalance, currentDeal, sellerAddress, deals, dealHistory]);
 
-  // Проверка баланса кошелька проекта перед автовыкупом
+  // Проверка баланса кошелька проекта
   const checkProjectWalletBalance = useCallback(async () => {
     try {
       const response = await fetch(
@@ -148,10 +160,11 @@ export default function Home() {
         throw new Error(data.error);
       }
       const balance = data.result.balance / 1e9;
-      const requiredAmount = deals[7].P + 0.05; // 28 + комиссия
+      const requiredAmount = deals[7].P + 0.05;
       if (balance < requiredAmount) {
         throw new Error(`Недостаточно средств на кошельке проекта: ${balance.toFixed(2)} TON, требуется ${requiredAmount.toFixed(2)} TON`);
       }
+      console.log('Баланс кошелька проекта:', balance);
       return balance;
     } catch (error) {
       console.error('Ошибка проверки баланса проекта:', error.message);
@@ -168,7 +181,6 @@ export default function Home() {
           setIsLoading(true);
           console.log('Запуск автовыкупа для сделки #8', { sellerAddress, deal });
 
-          // Проверка баланса кошелька проекта
           await checkProjectWalletBalance();
 
           const response = await fetch('/api/autobuy', {
@@ -196,7 +208,7 @@ export default function Home() {
             throw new Error(result.error || 'Неизвестная ошибка автовыкупа');
           }
         } catch (error) {
-          console.error('Ошибка Determining автовыкупа:', error.message);
+          console.error('Ошибка автовыкупа:', error.message);
           alert('Автовыкуп не удался: ' + error.message);
         } finally {
           setIsLoading(false);
@@ -205,6 +217,19 @@ export default function Home() {
       performAutoBuy();
     }
   }, [isClient, currentDeal, sellerAddress, deals, dealHistory, checkProjectWalletBalance]);
+
+  // Отладка состояния кнопки
+  useEffect(() => {
+    if (currentDeal <= 7) {
+      console.log('Состояние кнопки "Купить сейчас":', {
+        isLoading,
+        isClient,
+        connected: tonConnectUI?.connected,
+        sellerAddressRequired: currentDeal !== 1 && !sellerAddress,
+        currentDeal,
+      });
+    }
+  }, [isLoading, isClient, tonConnectUI, currentDeal, sellerAddress]);
 
   return (
     <div className={styles.container}>
