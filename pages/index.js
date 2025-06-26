@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import styles from '../styles/Home.module.css';
@@ -10,38 +10,48 @@ export default function Home() {
   const [dealHistory, setDealHistory] = useState([]);
   const [sellerAddress, setSellerAddress] = useState(null);
   const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Устанавливаем флаг клиентской стороны
+  // Схема сделок с автоматическим выкупом для сделки #8
+  const deals = useMemo(() => [
+    { i: 1, P: 1.625, R: 0.5, S: 0.5, royalty: 1.125 },
+    { i: 2, P: 3.234375, R: 1.7875, S: 1.7875, royalty: 1.446875 },
+    { i: 3, P: 5.447265625, R: 3.5578125, S: 3.5578125, royalty: 1.889453125 },
+    { i: 4, P: 8.489990234375, R: 5.9919921875, S: 5.9919921875, royalty: 2.497998046875 },
+    { i: 5, P: 12.673736572265625, R: 9.3389892578125, S: 9.3389892578125, royalty: 3.334747314453125 },
+    { i: 6, P: 18.426387786865234, R: 13.941110229492188, S: 13.941110229492188, royalty: 4.485277557373047 },
+    { i: 7, P: 26.336283206939697, R: 20.269026565551758, S: 20.269026565551758, royalty: 6.067256641387939 },
+    { i: 8, P: 28, R: 20.8, S: 20.8, royalty: 7.2 },
+  ], []);
+
+  // Установка флага клиентской стороны
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Данные о сделках (изменена сделка #1)
-  const deals = [
-    { i: 1, P: 10, R: 10, S: 0, royalty: 0 }, // Изменено: вся сумма 10 TON идет проекту
-    { i: 2, P: 11, R: 15.714285714285714, S: 11, royalty: 4.714285714285714 },
-    { i: 3, P: 15.714285714285714, R: 22.5, S: 15.75, royalty: 6.75 },
-    { i: 4, P: 22.5, R: 33.75, S: 23.625, royalty: 10.125 },
-    { i: 5, P: 33.75, R: 50.625, S: 35.4375, royalty: 15.1875 },
-    { i: 6, P: 50.625, R: 75.9375, S: 53.15625, royalty: 22.78125 },
-    { i: 7, P: 75.9375, R: 113.90625, S: 79.734375, royalty: 34.171875 },
-    { i: 8, P: 113.90625, R: 113.90625, S: 113.90625, royalty: 51.2578125 },
-    { i: 9, P: 113.90625, R: 113.90625, S: 113.90625, royalty: 0 },
-  ];
-
-  // Проверка баланса
+  // Получение баланса кошелька
   useEffect(() => {
     if (isClient && tonConnectUI?.account?.address) {
       async function fetchBalance() {
         try {
+          setIsLoading(true);
           const response = await fetch(
-            `https://toncenter.com/api/v2/getAddressInformation?address=${tonConnectUI.account.address}`,
-            { headers: { 'X-Api-Key': process.env.NEXT_PUBLIC_TONCENTER_API_KEY } }
+            `/api/getBalance?address=${encodeURIComponent(tonConnectUI.account.address)}`
           );
+          if (!response.ok) {
+            throw new Error(`HTTP ошибка: ${response.status}`);
+          }
           const data = await response.json();
+          if (data.error) {
+            throw new Error(data.error);
+          }
           setWalletBalance(data.result.balance / 1e9);
         } catch (error) {
-          console.error('Ошибка получения баланса:', error);
+          console.error('Ошибка получения баланса:', error.message);
+          setWalletBalance(0);
+          alert('Не удалось загрузить баланс кошелька: ' + error.message);
+        } finally {
+          setIsLoading(false);
         }
       }
       fetchBalance();
@@ -49,28 +59,32 @@ export default function Home() {
   }, [isClient, tonConnectUI]);
 
   // Установка продавца
-  const handleSetSeller = async () => {
+  const handleSetSeller = useCallback(async () => {
     if (isClient && tonConnectUI?.connected) {
       setSellerAddress(tonConnectUI.account.address);
       alert('Кошелек продавца установлен!');
     } else {
       alert('Пожалуйста, подключите кошелек, чтобы установить его как продавца.');
     }
-  };
+  }, [isClient, tonConnectUI]);
 
-  // Заключение сделки (1–8)
-  const handleDeal = async () => {
-    if (!isClient) return;
-
-    const deal = deals[currentDeal - 1];
-    const requiredAmount = deal.P + 0.05;
-
-    if (!tonConnectUI?.connected) {
+  // Обработка сделки (1–7)
+  const handleDeal = useCallback(async () => {
+    if (!isClient || !tonConnectUI?.connected) {
       alert('Пожалуйста, сначала подключите кошелек.');
       return;
     }
 
-    if (walletBalance < requiredAmount) {
+    const deal = deals[currentDeal - 1];
+    if (!deal || isNaN(deal.P) || isNaN(deal.S)) {
+      console.error('Неверные данные сделки:', deal);
+      alert('Неверные данные сделки');
+      return;
+    }
+
+    const requiredAmount = deal.P + 0.05;
+
+    if (walletBalance === null || walletBalance < requiredAmount) {
       alert(`Недостаточно средств. Требуется: ${requiredAmount.toFixed(2)} TON`);
       return;
     }
@@ -81,6 +95,7 @@ export default function Home() {
     }
 
     try {
+      setIsLoading(true);
       const messages = [
         {
           address: process.env.NEXT_PUBLIC_PROJECT_WALLET,
@@ -88,7 +103,6 @@ export default function Home() {
         },
       ];
 
-      // Для сделок 2–8 добавляем выплату продавцу, если установлен
       if (currentDeal !== 1 && sellerAddress) {
         messages.push({
           address: sellerAddress,
@@ -97,10 +111,11 @@ export default function Home() {
       }
 
       const transaction = {
-        validUntil: Math.floor(Date.now() / 1000) + 60,
+        validUntil: Math.floor(Date.now() / 1000) + 300, // Увеличено до 5 минут
         messages,
       };
 
+      console.log('Отправка транзакции:', transaction);
       await tonConnectUI.sendTransaction(transaction);
 
       setDealHistory([
@@ -112,44 +127,84 @@ export default function Home() {
 
       alert(`Сделка ${currentDeal} успешно завершена!`);
     } catch (error) {
-      console.error('Ошибка транзакции:', error);
-      alert('Транзакция не удалась. Попробуйте снова.');
+      console.error('Ошибка транзакции:', error.message);
+      alert('Транзакция не удалась: ' + error.message);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [isClient, tonConnectUI, walletBalance, currentDeal, sellerAddress, deals, dealHistory]);
 
-  // Автоматический выкуп для сделки 9
+  // Проверка баланса кошелька проекта перед автовыкупом
+  const checkProjectWalletBalance = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/getBalance?address=${encodeURIComponent(process.env.NEXT_PUBLIC_PROJECT_WALLET)}`
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP ошибка: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      const balance = data.result.balance / 1e9;
+      const requiredAmount = deals[7].P + 0.05; // 28 + комиссия
+      if (balance < requiredAmount) {
+        throw new Error(`Недостаточно средств на кошельке проекта: ${balance.toFixed(2)} TON, требуется ${requiredAmount.toFixed(2)} TON`);
+      }
+      return balance;
+    } catch (error) {
+      console.error('Ошибка проверки баланса проекта:', error.message);
+      throw error;
+    }
+  }, [deals]);
+
+  // Автоматический выкуп для сделки #8
   useEffect(() => {
-    if (isClient && currentDeal === 9 && sellerAddress) {
-      const deal = deals[8];
-      fetch('/api/autobuy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dealNumber: 9,
-          sellerAddress,
-          amount: deal.P,
-          sellerPayout: deal.S,
-        }),
-      })
-        .then((response) => response.json())
-        .then((result) => {
+    if (isClient && currentDeal === 8 && sellerAddress) {
+      const deal = deals[7];
+      async function performAutoBuy() {
+        try {
+          setIsLoading(true);
+          console.log('Запуск автовыкупа для сделки #8', { sellerAddress, deal });
+
+          // Проверка баланса кошелька проекта
+          await checkProjectWalletBalance();
+
+          const response = await fetch('/api/autobuy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dealNumber: 8,
+              sellerAddress,
+              amount: deal.P,
+              sellerPayout: deal.S,
+            }),
+          });
+
+          const result = await response.json();
+          console.log('Ответ от /api/autobuy:', result);
+
           if (result.success) {
             setDealHistory([
               { ...deal, buyer: 'Кошелек проекта', seller: sellerAddress },
               ...dealHistory,
             ]);
-            setCurrentDeal(10);
-            alert('Сделка 9 автоматически выкуплена кошельком проекта!');
+            setCurrentDeal(9);
+            alert('Сделка 8 автоматически выкуплена кошельком проекта!');
           } else {
-            alert('Автовыкуп не удался.');
+            throw new Error(result.error || 'Неизвестная ошибка автовыкупа');
           }
-        })
-        .catch((error) => {
-          console.error('Ошибка автовыкупа:', error);
-          alert('Автовыкуп не удался. Попробуйте снова.');
-        });
+        } catch (error) {
+          console.error('Ошибка Determining автовыкупа:', error.message);
+          alert('Автовыкуп не удался: ' + error.message);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      performAutoBuy();
     }
-  }, [isClient, currentDeal, sellerAddress]);
+  }, [isClient, currentDeal, sellerAddress, deals, dealHistory, checkProjectWalletBalance]);
 
   return (
     <div className={styles.container}>
@@ -164,7 +219,7 @@ export default function Home() {
         <img src="/icon.svg" alt="Логотип Цифровой Обмен" className={styles.logo} />
         <h1 className={styles.title}>Цифровой Обмен</h1>
 
-        <section className={styles.section}>
+        <section className={styles.section} aria-labelledby="wallet-heading">
           {isClient && (
             <div className={styles.walletButtonContainer}>
               <TonConnectButton />
@@ -178,18 +233,18 @@ export default function Home() {
               </p>
               <p>
                 <strong>Баланс:</strong>{' '}
-                {walletBalance ? walletBalance.toFixed(2) : 'Загрузка...'} TON
+                {walletBalance !== null ? walletBalance.toFixed(2) : 'Загрузка...'} TON
               </p>
-              <button className={styles.button} onClick={handleSetSeller}>
-                Установить как продавца
+              <button className={styles.button} onClick={handleSetSeller} disabled={isLoading}>
+                {isLoading ? 'Обработка...' : 'Установить как продавца'}
               </button>
             </div>
           )}
         </section>
 
-        <section className={styles.section}>
-          <h2>Текущая сделка #{currentDeal}</h2>
-          {currentDeal <= 8 && (
+        <section className={styles.section} aria-labelledby="deal-heading">
+          <h2 id="deal-heading">Текущая сделка #{currentDeal}</h2>
+          {currentDeal <= 7 && (
             <div className={styles.dealInfo}>
               <p>
                 <strong>Цена:</strong> {deals[currentDeal - 1].P.toFixed(2)} TON
@@ -199,21 +254,21 @@ export default function Home() {
               </p>
               <button
                 className={styles.button}
-                disabled={!isClient || !tonConnectUI?.connected || (currentDeal !== 1 && !sellerAddress)}
+                disabled={isLoading || !isClient || !tonConnectUI?.connected || (currentDeal !== 1 && !sellerAddress)}
                 onClick={handleDeal}
               >
-                Купить сейчас
+                {isLoading ? 'Обработка...' : 'Купить сейчас'}
               </button>
             </div>
           )}
-          {currentDeal === 9 && (
-            <p className={styles.info}>Сделка 9 будет автоматически выкуплена проектом.</p>
+          {currentDeal === 8 && (
+            <p className={styles.info}>Сделка 8 будет автоматически выкуплена проектом.</p>
           )}
-          {currentDeal > 9 && <p className={styles.info}>Больше сделок нет.</p>}
+          {currentDeal > 8 && <p className={styles.info}>Больше сделок нет.</p>}
         </section>
 
-        <section className={styles.section}>
-          <h2>История сделок</h2>
+        <section className={styles.section} aria-labelledby="history-heading">
+          <h2 id="history-heading">История сделок</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
