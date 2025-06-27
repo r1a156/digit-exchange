@@ -1,7 +1,8 @@
+
 {
-  "url": "https://digit-exchange-5yxh.vercel.app",
+  "url":  "https://digit-exchange-5yxh.vercel.app",
   "name": "Цифровой Обмен",
-  "iconUrl": "https://ibb.co/qMQMj1fM",
+  "iconUrl": "https://digit-exchange-5yxh.vercel.app/icon.svg",
   "termsOfUseUrl": "",
   "privacyPolicyUrl": ""
 }
