@@ -17,8 +17,8 @@ export default async function handler(req, res) {
       apiKey: process.env.NEXT_PUBLIC_TONCENTER_API_KEY,
     });
 
-    // Replace with actual mainnet seller address
-    const sellerAddress = 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c';
+    // Replace with your actual mainnet seller address
+    const sellerAddress = 'YOUR_MAINNET_SELLER_ADDRESS_HERE';
     const amount = toNano('0.1'); // 0.1 TON for the deal
 
     // Verify seller address
