@@ -1,174 +1,163 @@
 .container {
-  padding: 0 1rem; /* Уменьшенный отступ для мобильных */
+  min-height: 100vh;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(135deg, #111827 50%, #1f2937 100%);
+  color: #fff;
 }
 
 .main {
-  min-height: 100vh;
-  padding: 2rem 0; /* Уменьшенный верхний/нижний отступ */
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start; /* Выравнивание сверху для компактности */
   align-items: center;
+  max-width: 80rem;
+  width: 100%;
+  padding: 2rem 0;
 }
 
 .logo {
-  width: 80px; /* Уменьшен размер логотипа для мобильных */
-  height: 80px;
-  margin-bottom: 1.5rem;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+  animation: logoPulse 2s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 .title {
-  margin: 0;
-  line-height: 1.15;
-  font-size: 2rem; /* Уменьшен размер шрифта для мобильных */
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
   text-align: center;
-  color: #0070f3;
 }
 
 .section {
-  margin: 1.5rem 0; /* Уменьшенный отступ между секциями */
-  padding: 1rem; /* Уменьшенный внутренний отступ */
-  background: #f9f9f9;
-  border-radius: 8px;
   width: 100%;
-  max-width: 100%; /* Полная ширина на мобильных */
-  box-sizing: border-box; /* Учитывать padding в ширине */
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #1f2937;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.walletButtonContainer {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
 }
 
 .walletInfo {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
   text-align: center;
-  width: 100%; /* Полная ширина */
 }
 
-.dealInfo {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  text-align: center;
-  width: 100%; /* Полная ширина */
+.walletInfo p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  color: #d1d5db;
 }
 
 .button {
-  background: #0070f3;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem; /* Уменьшенный размер кнопки для мобильных */
-  border-radius: 4px;
-  cursor: pointer;
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 0.5rem;
   font-size: 1rem;
-  margin-top: 0.5rem; /* Уменьшенный отступ сверху */
-  width: 100%; /* Полная ширина кнопки */
-  box-sizing: border-box;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.button:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .button:disabled {
-  background: #ccc;
+  background: #6b7280;
   cursor: not-allowed;
+}
+
+.dealInfo {
+  text-align: center;
+}
+
+.dealInfo p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  color: #d1d5db;
+}
+
+.info {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 1rem;
+}
+
+.tableContainer {
+  overflow-x: auto;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 1rem;
-  min-width: 600px; /* Минимальная ширина для горизонтальной прокрутки */
 }
 
 .table th,
 .table td {
-  border: 1px solid #ddd;
-  padding: 0.5rem;
-  text-align: center;
-  font-size: 0.9rem; /* Уменьшенный шрифт для мобильных */
-  word-wrap: break-word; /* Перенос длинных слов */
-  white-space: nowrap; /* Предотвращение обрезания текста */
+  border: 1px solid #374151;
+  padding: 0.75rem;
+  text-align: left;
+  font-size: 0.875rem;
 }
 
 .table th {
-  background: #0070f3;
-  color: white;
+  background: #374151;
+  color: #fff;
 }
 
-/* Новый контейнер для таблицы с горизонтальной прокруткой */
-.tableContainer {
-  overflow-x: auto; /* Горизонтальная прокрутка */
-  -webkit-overflow-scrolling: touch; /* Плавная прокрутка на iOS */
-  width: 100%;
+.table tr:nth-child(even) {
+  background: #1f2937;
 }
 
-/* Уменьшение ширины столбцов для мобильных */
-.table th:nth-child(1),
-.table td:nth-child(1) { width: 10%; } /* Сделка */
-.table th:nth-child(2),
-.table td:nth-child(2) { width: 20%; } /* Цена */
-.table th:nth-child(3),
-.table td:nth-child(3) { width: 20%; } /* Выплата */
-.table th:nth-child(4),
-.table td:nth-child(4) { width: 25%; } /* Покупатель */
-.table th:nth-child(5),
-.table td:nth-child(5) { width: 25%; } /* Продавец */
-
-.info {
-  color: #555;
-  text-align: center;
-  margin-top: 1rem;
-  font-size: 0.9rem; /* Уменьшенный шрифт */
+.table tr:hover {
+  background: #374151;
 }
 
-/* Контейнер для кнопки кошелька */
-.walletButtonContainer {
-  display: flex;
-  justify-content: center;
+.error {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
   margin-bottom: 1rem;
-  width: 100%; /* Полная ширина */
+  text-align: center;
+  animation: slideIn 0.3s ease-in;
 }
 
-/* Улучшенные настройки для мобильных */
-@media (max-width: 600px) {
+@keyframes slideIn {
+  0% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
   .title {
-    font-size: 1.8rem; /* Ещё меньше для очень маленьких экранов */
+    font-size: 2rem;
   }
 
   .section {
-    padding: 0.5rem; /* Ещё меньше внутреннего отступа */
-  }
-
-  .walletInfo p,
-  .dealInfo p {
-    margin: 0.5rem 0; /* Равномерные отступы между строками */
-    font-size: 0.9rem; /* Уменьшенный шрифт */
-  }
-
-  .table {
-    font-size: 0.8rem; /* Ещё меньше для таблиц */
-    min-width: 400px; /* Уменьшенная минимальная ширина */
-  }
-
-  .table th,
-  .table td {
-    padding: 0.3rem; /* Уменьшенный внутренний отступ в таблице */
-  }
-}
-
-@media (max-width: 400px) {
-  .button {
-    padding: 0.4rem 0.8rem; /* Ещё меньше для очень маленьких экранов */
-    font-size: 0.9rem;
-  }
-
-  .logo {
-    width: 60px;
-    height: 60px;
-  }
-
-  .table {
-    min-width: 300px; /* Ещё меньше для очень маленьких экранов */
+    padding: 1rem;
   }
 }
