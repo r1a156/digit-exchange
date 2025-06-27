@@ -13,12 +13,12 @@ export default async function handler(req, res) {
 
   try {
     const client = new TonClient({
-      endpoint: 'https://testnet.toncenter.com/api/v2/jsonRPC',
+      endpoint: 'https://toncenter.com/api/v2/jsonRPC',
       apiKey: process.env.NEXT_PUBLIC_TONCENTER_API_KEY,
     });
 
-    // Hardcoded seller address (replace with actual seller address)
-    const sellerAddress = 'kQDbU54b9Yf2y6hZ1nDJa96J1BuW7n3zE9u_9iHrqFzW5n5O';
+    // Replace with actual mainnet seller address
+    const sellerAddress = 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c';
     const amount = toNano('0.1'); // 0.1 TON for the deal
 
     // Verify seller address
