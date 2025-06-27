@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   try {
     const client = new TonClient({
-      endpoint: 'https://testnet.toncenter.com/api/v2/jsonRPC',
+      endpoint: 'https://toncenter.com/api/v2/jsonRPC',
       apiKey: process.env.NEXT_PUBLIC_TONCENTER_API_KEY,
     });
 
