@@ -1,70 +1,16 @@
-import { TonClient, WalletContractV4, internal, toNano } from '@ton/ton';
-import { mnemonicToPrivateKey } from '@ton/crypto';
-
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// WARNING: The seed phrase used here was exposed publicly.
-// Replace it with a new wallet's seed phrase before production.
-// Create a new wallet in Tonkeeper and update PROJECT_WALLET_SEED
-// and NEXT_PUBLIC_PROJECT_WALLET in Vercel Environment Variables.
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
+    return res.status(405).json({ error: 'Метод не разрешён' });
   }
 
   const { dealNumber, sellerAddress, amount, sellerPayout } = req.body;
 
-  if (dealNumber !== 9) {
-    return res.status(400).json({ success: false, message: 'Invalid deal number' });
+  if (!dealNumber || !sellerAddress || !amount || !sellerPayout) {
+    return res.status(400).json({ error: 'Все поля обязательны' });
   }
 
-  try {
-    // Инициализация клиента TON (Mainnet)
-    const client = new TonClient({
-      endpoint: 'https://toncenter.com/api/v2/jsonRPC',
-      apiKey: process.env.TONCENTER_API_KEY,
-    });
+  // TODO: Реализовать логику автоскупки с реальным смарт-контрактом
+  console.log('Автовыкуп:', { dealNumber, sellerAddress, amount, sellerPayout });
 
-    // Получение ключей из seed-фразы
-    const mnemonic = process.env.PROJECT_WALLET_SEED.split(' ');
-    const keyPair = await mnemonicToPrivateKey(mnemonic);
-
-    // Создание кошелька проекта
-    const wallet = WalletContractV4.create({
-      workchain: 0,
-      publicKey: keyPair.publicKey,
-    });
-    const walletContract = client.open(wallet);
-
-    // Проверка баланса кошелька проекта
-    const balance = await walletContract.getBalance();
-    const requiredAmount = toNano(amount + 0.05); // P_9 + комиссия
-
-    if (balance < requiredAmount) {
-      return res.status(400).json({ success: false, message: 'Insufficient balance on project wallet' });
-    }
-
-    // Формирование транзакции
-    const seqno = await walletContract.getSeqno();
-    const transfer = walletContract.createTransfer({
-      seqno,
-      secretKey: keyPair.secretKey,
-      messages: [
-        internal({
-          to: sellerAddress,
-          value: toNano(sellerPayout),
-          bounce: true,
-        }),
-      ],
-    });
-
-    // Отправка транзакции
-    await walletContract.send(transfer);
-
-    return res.status(200).json({ success: true, message: 'Auto-buy completed' });
-  } catch (error) {
-    console.error('Auto-buy error:', error);
-    return res.status(500).json({ success: false, message: 'Auto-buy failed' });
-  }
+  res.status(200).json({ success: true });
 }
