@@ -1,16 +1,46 @@
+import { TonClient } from '@ton/ton';
+import { Address, beginCell, toNano } from '@ton/core';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Метод не разрешён' });
+    return res.status(405).json({ success: false, error: 'Метод не поддерживается' });
   }
 
-  const { dealNumber, sellerAddress, amount, sellerPayout } = req.body;
-
-  if (!dealNumber || !sellerAddress || !amount || !sellerPayout) {
-    return res.status(400).json({ error: 'Все поля обязательны' });
+  const { buyerAddress } = req.body;
+  if (!buyerAddress) {
+    return res.status(400).json({ success: false, error: 'Требуется адрес покупателя' });
   }
 
-  // TODO: Реализовать логику автоскупки с реальным смарт-контрактом
-  console.log('Автовыкуп:', { dealNumber, sellerAddress, amount, sellerPayout });
+  try {
+    const client = new TonClient({
+      endpoint: 'https://testnet.toncenter.com/api/v2/jsonRPC',
+      apiKey: process.env.NEXT_PUBLIC_TONCENTER_API_KEY,
+    });
 
-  res.status(200).json({ success: true });
+    // Hardcoded seller address (replace with actual seller address)
+    const sellerAddress = 'kQDbU54b9Yf2y6hZ1nDJa96J1BuW7n3zE9u_9iHrqFzW5n5O';
+    const amount = toNano('0.1'); // 0.1 TON for the deal
+
+    // Verify seller address
+    await client.getBalance(Address.parse(sellerAddress));
+
+    // Create transaction payload
+    const payload = beginCell()
+      .storeUint(0, 32) // Operation code (0 for simple transfer)
+      .storeStringTail('Buy Now') // Comment
+      .endCell()
+      .toBoc()
+      .toString('base64');
+
+    const transaction = {
+      to: sellerAddress,
+      amount: amount.toString(),
+      payload,
+    };
+
+    return res.status(200).json({ success: true, transaction });
+  } catch (error) {
+    console.error('Ошибка автоскупки:', error);
+    return res.status(500).json({ success: false, error: 'Не удалось обработать покупку: ' + error.message });
+  }
 }
