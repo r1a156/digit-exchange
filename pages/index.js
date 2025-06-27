@@ -117,9 +117,10 @@ export default function Home() {
 
     try {
       setIsLoading(true);
+      const projectWallet = process.env.NEXT_PUBLIC_PROJECT_WALLET || 'UQCJFymQcEZYOp8UbITHMaHo8HH8FPVzTWTrqxN6tB0O3_Kn';
       const messages = [
         {
-          address: process.env.NEXT_PUBLIC_PROJECT_WALLET || 'UQCJFymQcEZYOp8UbITHMaHo8HH8FPVzTWTrqxN6tB0O3_Kn',
+          address: projectWallet,
           amount: (deal.P * 1e9).toString(),
         },
       ];
